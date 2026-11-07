@@ -1,0 +1,12 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.12
+opencv-contrib-python==4.11.0.86
+mediapipe==0.10.21
+numpy>=1.26,<3
+openai>=1.54,<3
+imageio-ffmpeg>=0.5,<1
+python-dotenv>=1.0,<2
+pytest>=8,<9
+httpx>=0.27,<1
+argon2-cffi>=23.1,<26

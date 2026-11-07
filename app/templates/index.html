@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interview Behavior Analysis</title>
+  <meta name="description" content="Анализ наблюдаемых признаков поведения человека на видео интервью">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/auth/assets/auth.css">
+</head>
+<body><main>
+  <header><div class="brand"><span class="mark">◫</span> Interview Behavior Analysis</div><span id="mode" class="pill">Проверка сервера…</span></header>
+  <section class="hero"><p class="eyebrow">ВИДЕО ИНТЕРВЬЮ → НАБЛЮДАЕМЫЕ ПРИЗНАКИ</p><h1>Разберите поведение<br><em>по времени и модальностям</em></h1><p class="lead">Сервис измеряет мимику, взгляд, движения головы и речевые характеристики, а затем отдельно формирует осторожную LLM-интерпретацию.</p></section>
+  <section id="drop" class="drop" tabindex="0" role="button" aria-label="Выбрать видео"><input id="file" type="file" accept="video/*" hidden><div class="upload-icon">↑</div><h2>Перетащите видео интервью сюда</h2><p>или нажмите, чтобы выбрать файл</p><small>MP4, MOV, WebM, MKV, AVI, M4V · файл обрабатывается локальным FastAPI-сервером</small></section>
+  <section class="results cloud-import">
+    <form id="cloud-form">
+      <label for="cloud-url">Ссылка на видеозапись</label>
+      <div class="cloud-controls"><input id="cloud-url" name="url" type="url" required maxlength="4096" placeholder="https://…" aria-describedby="cloud-help cloud-status"><button id="cloud-add" class="primary" type="submit">Добавить из облака</button></div>
+      <p id="cloud-help" class="status-note">Прямая HTTP/HTTPS-ссылка на MP4/WebM или публичный файл Google Drive с разрешённым скачиванием. После загрузки анализ начнётся автоматически.</p>
+      <p id="cloud-status" class="status-note" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+  <section id="workspace" class="workspace hidden">
+    <div class="preview-card"><video id="video" controls muted playsinline></video><div class="file-row"><div><strong id="file-name"></strong><span id="file-meta"></span></div><button id="change" class="ghost">Добавить видео</button></div></div>
+    <div class="action-card"><h2>Последовательный анализ</h2><p>Сервер анализирует кадры по всей длительности, извлекает аудио и при наличии ключа выполняет транскрипцию и LLM-анализ.</p><button id="analyze" class="primary">Запустить анализ <span>→</span></button><div id="progress" class="progress hidden"><i></i><span>Загружаем и анализируем видео…</span></div></div>
+  </section>
+  <section class="results archive"><div class="result-head"><h2>Сохранённые анализы</h2><button id="archive-refresh" class="ghost" type="button">Обновить список</button></div><div id="archive-auth" hidden></div><p id="archive-status" class="status-note" aria-live="polite"></p><div id="archive-list"></div></section>
+  <div id="results-list" aria-live="polite"></div>
+  <section id="comparison" class="results comparison hidden">
+    <div class="result-head"><div><p class="eyebrow">СРАВНЕНИЕ ВИДЕО</p><h2>Сводные метрики</h2></div></div>
+    <p class="status-note">Показаны алгоритмически рассчитанные значения. Разница между видео не является оценкой человека.</p>
+    <div class="table-wrap"><table id="comparison-table"></table></div>
+    <div id="comparison-charts" class="comparison-charts"></div>
+  </section>
+  <template id="result-template">
+    <section class="results result-card">
+      <div class="result-head"><div><p class="eyebrow" data-role="number"></p><h2 data-role="title"></h2></div><button data-action="copy" class="ghost">Копировать JSON</button></div>
+      <p class="saved-path">Версия сохранена: <code data-role="saved-path"></code></p>
+      <div class="result-video"><video data-role="result-video" controls muted playsinline></video></div>
+      <div class="model-strip"><div><span>Визуальный анализ</span><strong data-role="visual-model"></strong></div><div><span>Транскрипция</span><strong data-role="transcription-model"></strong></div><div><span>LLM-анализ</span><strong data-role="llm-model"></strong></div></div>
+      <p class="status-note"><strong>Разделение данных:</strong> метрики ниже рассчитаны алгоритмами. Интерпретация LLM вынесена в отдельный блок.</p>
+      <div class="metrics" data-role="metrics"></div>
+      <div class="block quality-section"><p class="eyebrow">ДОСТУПНОСТЬ ДАННЫХ</p><h2>Качество анализа</h2><p class="section-help">Показывает, какие части анализа выполнены и достаточно ли исходных данных для их расчёта.</p><div data-role="quality-statuses" class="status-grid"></div><div data-role="quality-alerts" class="quality-alerts"></div></div>
+      <div class="block eye-section"><p class="eyebrow">КАЧЕСТВО ИЗМЕРЕНИЯ</p><h2>Надёжность отслеживания глаз</h2><p class="section-help">Оценка относится к качеству распознавания глаз на кадрах, а не к человеку.</p><div data-role="eye-summary" class="eye-summary"></div><div data-role="eye-modes" class="metrics compact-metrics"></div><div data-role="eye-details" class="grid detail-grid"></div><p data-role="eye-note" class="quality-note"></p></div>
+      <div class="grid result-grid"><article><h3>Направление взгляда</h3><p data-role="gaze-note" class="section-help"></p><ul data-role="gaze" class="facts"></ul></article><article><h3>Положение и движение головы</h3><p class="section-help">Измеряется независимо от глаз и не используется как замена направления взгляда.</p><ul data-role="head" class="facts"></ul></article><article><h3>Мимические и геометрические признаки</h3><ul data-role="facial" class="facts"></ul></article><article><h3>Речевые характеристики</h3><ul data-role="speech" class="facts"></ul></article></div>
+      <div class="block"><p class="eyebrow">РАСПОЗНАННЫЙ ТЕКСТ</p><h2>Транскрипция</h2><div data-role="speech-status" class="inline-status"></div><p data-role="transcript" class="transcript"></p></div>
+      <div class="block"><h2>Краткое содержание встречи</h2><div data-role="meeting-status" class="inline-status"></div><p data-role="meeting-message" class="status-note"></p><div data-role="meeting-content" class="hidden"><p data-role="meeting-summary"></p><h3>Принятые решения</h3><ul data-role="meeting-decisions" class="facts"></ul><h3>Поставленные задачи</h3><ul data-role="meeting-tasks" class="facts"></ul><h3>Открытые вопросы</h3><ul data-role="meeting-questions" class="facts"></ul></div></div>
+      <div class="block qa-section"><p class="eyebrow">СМЫСЛОВАЯ СЕГМЕНТАЦИЯ</p><h2>Вопросы и ответы по времени</h2><div data-role="qa-status" class="inline-status"></div><p class="section-help">Задержка — это промежуток между временными границами распознанных сегментов вопроса и ответа; она не описывает состояние человека.</p><p data-role="qa-message" class="qa-message"></p><div data-role="qa-blocks" class="qa-blocks"></div></div>
+      <div class="block"><h3>Временные события</h3><div data-role="events" class="scenes"></div></div>
+      <div class="block limitations-section"><p class="eyebrow">ВАЖНО ДЛЯ ЧТЕНИЯ РЕЗУЛЬТАТА</p><h2>Ограничения измерений</h2><ul data-role="measurement-limitations" class="facts"></ul></div>
+      <details class="block technical-details"><summary>Технические детали измерений</summary><p class="section-help">Внутренние параметры нужны для воспроизводимости анализа и не имеют нормативной или психологической шкалы.</p><div class="grid"><article><h3>Обработка видео</h3><ul data-role="video-technical" class="facts"></ul></article><article><h3>Калибровка</h3><ul data-role="calibration-technical" class="facts"></ul></article><article><h3>Аудиосигнал</h3><ul data-role="speech-technical" class="facts"></ul></article><article><h3>Сегментация</h3><ul data-role="qa-technical" class="facts"></ul></article></div></details>
+      <div class="block"><p class="eyebrow">ОТДЕЛЬНЫЙ АНАЛИТИЧЕСКИЙ СЛОЙ</p><h2>Общий LLM-анализ</h2><div data-role="llm-status" class="inline-status"></div><p data-role="objective-note" class="status-note"></p><p data-role="interpretation-note" class="status-note"></p><p data-role="llm-message"></p><div data-role="llm-content" class="hidden"><h3>Резюме</h3><p data-role="llm-summary"></p><div class="grid"><article><h3>Мимика</h3><p data-role="llm-facial"></p></article><article><h3>Взгляд</h3><p data-role="llm-gaze"></p></article><article><h3>Голова</h3><p data-role="llm-head"></p></article><article><h3>Речь</h3><p data-role="llm-speech"></p></article></div><h3>Сопоставление речи, мимики и движений</h3><p data-role="cross-modal"></p><h3>Наблюдаемые факты</h3><ul data-role="observed-facts" class="facts"></ul><h3>Сопоставление наблюдаемых данных</h3><ul data-role="interpretation" class="facts"></ul><h3>Временные сопоставления</h3><ul data-role="timeline-insights" class="facts"></ul><h3>Ограничения LLM</h3><ul data-role="llm-limitations" class="facts"></ul></div></div>
+    </section>
+  </template>
+  <footer>Алгоритмические признаки зависят от ракурса, света, качества звука и видимости лица.</footer>
+</main><script type="module" src="/static/app.js"></script><script type="module" src="/auth/assets/auth.js"></script></body></html>

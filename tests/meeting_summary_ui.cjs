@@ -1,0 +1,33 @@
+// Test the summary renderer without browser, network, media or OpenAI.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const source = fs.readFileSync(path.join(__dirname,'../app/static/app.js'),'utf8');
+const code = source.slice(source.indexOf('function renderMeetingSummary('),source.indexOf('\nfunction renderQuality('));
+const nodes = {};
+const role = name => nodes[name] ||= {textContent:'',classList:{toggle(name,value){this[name]=value}}};
+const context = {list:(node,items)=>{node.items=items},setStatus:(node,status,label)=>{node.status=status;node.label=label}};
+vm.createContext(context);
+vm.runInContext(code,context);
+const render = summary => context.renderMeetingSummary(role,summary);
+
+render(undefined);
+assert.match(role('meeting-message').textContent,/архивной записи/);
+assert.equal(role('meeting-content').classList.hidden,true);
+render({status:'completed',content:{summary_sentences:['Первое.','Второе.','Третье.','Четвёртое.','Пятое.'],decisions:[],tasks:[],open_questions:[]}});
+assert.equal(role('meeting-content').classList.hidden,false);
+assert.equal(role('meeting-summary').textContent,'Первое. Второе. Третье. Четвёртое. Пятое.');
+for(const target of ['meeting-decisions','meeting-tasks','meeting-questions']) assert.equal(role(target).items.join(''),'Не выявлены');
+render({status:'completed',content:{summary_sentences:['Текст.'],decisions:['Решили начать.'],tasks:[{task:'Подготовить отчёт',assignee:'Анна',deadline:'до пятницы'},{task:'Проверить файл'}],open_questions:['Кто согласует бюджет?']}});
+assert.equal(role('meeting-tasks').items[0],'Подготовить отчёт — Ответственный: Анна — Срок: до пятницы');
+assert.equal(role('meeting-tasks').items[1],'Проверить файл');
+render({status:'failed',message:'Ошибка конспектирования.'});
+assert.equal(role('meeting-content').classList.hidden,true);
+assert.equal(role('meeting-summary').textContent,'');
+assert.equal(role('meeting-message').textContent,'Ошибка конспектирования.');
+assert.equal(role('meeting-decisions').items.length,0);
+render({status:'unavailable',message:'Нет транскрипции.'});
+assert.equal(role('meeting-content').classList.hidden,true);
+assert.equal(role('meeting-message').textContent,'Нет транскрипции.');
+console.log('Meeting summary UI: 5 scenarios passed (legacy, empty lists, tasks, failure, unavailable).');
